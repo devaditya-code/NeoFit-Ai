@@ -7,23 +7,27 @@ Dash Framework Implementation
 
 import os
 import base64
-import calendar as pycalendar
 from datetime import datetime, date
 
 import dash
-from dash import dcc, html, Input, Output, State, ALL, callback_context
-import plotly.graph_objects as go
+from dash import dcc, html, Input, Output, State, callback_context
 
 import database as db
 import calculations as calc
 import ai_engine
 import notifications
-from food_database import search_food, calculate_nutrition
 from auth_utils import detect_identifier_type, normalize_identifier, is_valid_password
 from styles import (
     get_dash_global_css, render_progress_ring, neo_card, header, Row, Col,
     PULSAR_CYAN, COSMIC_PURPLE, HYPERDRIVE_GREEN, NEBULA_PINK, SUPERNOVA_GOLD
 )
+
+# --------------------------------------------------------------------------- #
+# Image Assets (Gym & Cosmos Themed)
+# --------------------------------------------------------------------------- #
+IMG_CYBER_GYM = "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1000&q=80"
+IMG_SPACE_WORKOUT = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80"
+IMG_MEAL_PREP = "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1000&q=80"
 
 # --------------------------------------------------------------------------- #
 # App config & bootstrap
@@ -90,59 +94,81 @@ def display_targets(profile: dict) -> dict:
 # Page Layout Generators
 # --------------------------------------------------------------------------- #
 def render_auth_page(error_msg=""):
-    return html.Div(style={"display": "flex", "justifyContent": "center", "alignItems": "center", "minHeight": "100vh", "width": "100%"}, children=[
-        html.Div(style={"width": "400px"}, children=[
+    return html.Div(className="starry-bg", style={"display": "flex", "justifyContent": "center", "alignItems": "center", "minHeight": "100vh", "padding": "20px"}, children=[
+        html.Div(style={"width": "100%", "maxWidth": "440px"}, children=[
+            html.Img(src=IMG_CYBER_GYM, className="gym-hero-img"),
             html.H1("🚀 NeoFit AI", style={
                 "textAlign": "center", "background": f"linear-gradient(90deg,{PULSAR_CYAN},{COSMIC_PURPLE})",
-                "WebkitBackgroundClip": "text", "WebkitTextFillColor": "transparent", "fontSize": "42px"
+                "WebkitBackgroundClip": "text", "WebkitTextFillColor": "transparent", "fontSize": "40px", "marginBottom": "4px"
             }),
-            html.P("Zero-Gravity AI Nutrition & Cosmic Gym Companion", style={"textAlign": "center", "color": "#8CA0C0"}),
+            html.P("Zero-Gravity AI Nutrition & Cosmic Gym Companion", style={"textAlign": "center", "color": "#A0B0D0", "marginBottom": "24px", "fontWeight": "500"}),
             neo_card([
                 dcc.Tabs(id='auth-tabs', value='login', children=[
                     dcc.Tab(label='Log In', value='login', children=[
                         html.Br(),
-                        dcc.Input(id='login-id', type='text', placeholder='Email or Phone', className='neo-input'),
-                        dcc.Input(id='login-pw', type='password', placeholder='Password', className='neo-input'),
-                        html.Button('Launch Session', id='btn-login', n_clicks=0, className='neo-btn'),
+                        html.Label("EMAIL OR PHONE"),
+                        dcc.Input(id='login-id', type='text', placeholder='cadet@spacegym.io', className='neo-input'),
+                        html.Label("SECURITY PASSCODE"),
+                        dcc.Input(id='login-pw', type='password', placeholder='••••••••', className='neo-input'),
+                        html.Button('Launch Session 🚀', id='btn-login', n_clicks=0, className='neo-btn'),
                     ]),
                     dcc.Tab(label='Create Account', value='signup', children=[
                         html.Br(),
-                        dcc.Input(id='signup-id', type='text', placeholder='Email or Phone', className='neo-input'),
-                        dcc.Input(id='signup-pw', type='password', placeholder='Create Password', className='neo-input'),
-                        dcc.Input(id='signup-pw2', type='password', placeholder='Confirm Password', className='neo-input'),
-                        html.Button('Initiate Account', id='btn-signup', n_clicks=0, className='neo-btn'),
+                        html.Label("EMAIL OR PHONE"),
+                        dcc.Input(id='signup-id', type='text', placeholder='cadet@spacegym.io', className='neo-input'),
+                        html.Label("CREATE PASSCODE"),
+                        dcc.Input(id='signup-pw', type='password', placeholder='At least 6 characters', className='neo-input'),
+                        html.Label("CONFIRM PASSCODE"),
+                        dcc.Input(id='signup-pw2', type='password', placeholder='Repeat passcode', className='neo-input'),
+                        html.Button('Initiate Account ✨', id='btn-signup', n_clicks=0, className='neo-btn'),
                     ])
                 ]),
-                html.Div(error_msg, id='auth-error', style={"color": NEBULA_PINK, "marginTop": "10px", "textAlign": "center"})
+                html.Div(error_msg, id='auth-error', style={"color": NEBULA_PINK, "marginTop": "14px", "textAlign": "center", "fontWeight": "bold"})
             ])
         ])
     ])
 
 def render_onboarding_page():
-    return html.Div(className='main-content', children=[
-        header("Welcome Cadet! Calibrating Physical Metrics 🚀", "30-second setup to calculate your gravity-defying macro targets."),
-        neo_card(title="Biometric Baseline", children=[
-            dcc.RadioItems(id='unit-pref', options=[{'label': 'Metric', 'value': 'metric'}, {'label': 'Imperial', 'value': 'imperial'}], value='metric', inline=True),
-            html.Br(),
-            Row([
-                Col([
-                    html.Label("Age"),
-                    dcc.Input(id='ob-age', type='number', min=13, max=100, value=25, className='neo-input'),
-                    html.Label("Gender"),
-                    dcc.Dropdown(id='ob-gender', options=['Male', 'Female', 'Other'], value='Male', clearable=False, className='neo-input')
+    return html.Div(className="starry-bg", style={"padding": "40px 20px", "display": "flex", "justifyContent": "center"}, children=[
+        html.Div(style={"width": "100%", "maxWidth": "700px"}, children=[
+            header("Welcome Cadet! Calibrating Physical Metrics 🚀", "30-second setup to calculate your gravity-defying macro targets."),
+            html.Img(src=IMG_SPACE_WORKOUT, className="gym-hero-img", style={"height": "200px"}),
+            neo_card(title="Biometric Baseline", children=[
+                html.Label("WEIGHT & MEASUREMENT FORMAT"),
+                dcc.RadioItems(
+                    id='unit-pref',
+                    options=[
+                        {'label': ' Metric Format (kg / cm)', 'value': 'metric'},
+                        {'label': ' Imperial Format (lbs / inches)', 'value': 'imperial'}
+                    ],
+                    value='metric',
+                    inline=True,
+                    className='radio-group'
+                ),
+                html.Br(),
+                Row([
+                    Col([
+                        html.Label("AGE (YEARS)"),
+                        dcc.Input(id='ob-age', type='number', min=13, max=100, value=25, className='neo-input'),
+                        html.Label("GENDER IDENTIFIER"),
+                        dcc.Dropdown(id='ob-gender', options=['Male', 'Female', 'Other'], value='Male', clearable=False)
+                    ]),
+                    Col([
+                        html.Label("CURRENT WEIGHT (kg or lbs)"),
+                        dcc.Input(id='ob-weight', type='number', value=70.0, className='neo-input'),
+                        html.Label("HEIGHT (cm or inches)"),
+                        dcc.Input(id='ob-height', type='number', value=170.0, className='neo-input'),
+                    ])
                 ]),
-                Col([
-                    html.Label("Current Weight (kg/lbs)"),
-                    dcc.Input(id='ob-weight', type='number', value=70.0, className='neo-input'),
-                    html.Label("Height (cm/inches)"),
-                    dcc.Input(id='ob-height', type='number', value=170.0, className='neo-input'),
-                ])
-            ]),
-            html.Label("Activity Level"),
-            dcc.Dropdown(id='ob-activity', options=list(calc.ACTIVITY_MULTIPLIERS.keys()), value='Sedentary', clearable=False, className='neo-input'),
-            html.Label("Primary Orbital Goal"),
-            dcc.Dropdown(id='ob-goal', options=calc.GOALS, value='Maintenance', clearable=False, className='neo-input'),
-            html.Button("Complete Calibration & Enter Space Station", id='btn-onboard', n_clicks=0, className='neo-btn')
+                html.Br(),
+                html.Label("ACTIVITY LEVEL"),
+                dcc.Dropdown(id='ob-activity', options=list(calc.ACTIVITY_MULTIPLIERS.keys()), value='Sedentary', clearable=False),
+                html.Br(),
+                html.Label("PRIMARY ORBITAL GOAL"),
+                dcc.Dropdown(id='ob-goal', options=calc.GOALS, value='Maintenance', clearable=False),
+                html.Br(),
+                html.Button("Complete Calibration & Enter Space Station 🛰️", id='btn-onboard', n_clicks=0, className='neo-btn')
+            ])
         ])
     ])
 
@@ -161,17 +187,17 @@ def render_dashboard(user_id, profile):
         alerts = [html.Span(f"💡 MISSION HINT: {hint}", className='neo-badge')]
 
     meals = db.get_meals_by_date(user_id, today_str)
-    meal_list = [html.Div("No fuel logged yet today.", style={"color": "#8CA0C0"})] if not meals else [
+    meal_list = [html.Div("No fuel logged yet today.", style={"color": "#A0B0D0"})] if not meals else [
         html.Div([
             html.H4(f"🚀 {m['meal_type']} · {m['log_time']} — {m['calories']:.0f} kcal"),
-            html.P(m["description"] or "(logged via search)"),
+            html.P(m["description"] or "(logged via search)", style={"color": "#E0E6ED"}),
             Row([
-                Col(html.B(f"Cal: {m['calories']:.0f}")),
-                Col(html.B(f"Pro: {m['protein']:.1f}g")),
-                Col(html.B(f"Carb: {m['carbs']:.1f}g")),
-                Col(html.B(f"Fat: {m['fats']:.1f}g")),
+                Col(html.B(f"Cal: {m['calories']:.0f}", style={"color": PULSAR_CYAN})),
+                Col(html.B(f"Pro: {m['protein']:.1f}g", style={"color": HYPERDRIVE_GREEN})),
+                Col(html.B(f"Carb: {m['carbs']:.1f}g", style={"color": SUPERNOVA_GOLD})),
+                Col(html.B(f"Fat: {m['fats']:.1f}g", style={"color": NEBULA_PINK})),
             ]),
-            html.Div(f"🤖 Space AI Coach: {m['ai_feedback']}" if m.get('ai_feedback') else "", style={"color": HYPERDRIVE_GREEN, "fontSize": "12px", "marginTop": "8px"}),
+            html.Div(f"🤖 Space AI Coach: {m['ai_feedback']}" if m.get('ai_feedback') else "", style={"color": HYPERDRIVE_GREEN, "fontSize": "13px", "marginTop": "8px", "fontWeight": "500"}),
             html.Hr(style={"borderColor": "rgba(123, 44, 191, 0.3)"})
         ]) for m in meals
     ]
@@ -187,28 +213,30 @@ def render_dashboard(user_id, profile):
                 Col(render_progress_ring("Fats", totals["fats"], targets["fats"], NEBULA_PINK, "g")),
             ])
         ]),
-        neo_card(title=f"Logged Fuel Intake — Mission: {profile.get('goal', '')}", children=meal_list)
+        neo_card(title=f"Logged Fuel Intake — Mission: {profile.get('goal', 'Maintenance')}", children=meal_list)
     ])
 
 def render_log_meal():
     return html.Div(className='main-content', children=[
         header("Log Fuel Intake", "Upload a photo or describe your meal — AI Vision computes macro vectors."),
+        html.Img(src=IMG_MEAL_PREP, className="gym-hero-img"),
         neo_card(title="Fuel Entry", children=[
             Row([
                 Col([
-                    html.Label("Meal Category"),
-                    dcc.Dropdown(id='lm-type', options=MEAL_TYPES, value='Breakfast', clearable=False, className='neo-input')
+                    html.Label("MEAL CATEGORY"),
+                    dcc.Dropdown(id='lm-type', options=MEAL_TYPES, value='Breakfast', clearable=False)
                 ]),
                 Col([
-                    html.Label("Date"),
+                    html.Label("DATE"),
                     dcc.Input(id='lm-date', type='date', value=date.today().isoformat(), className='neo-input')
                 ])
             ]),
-            html.Label("Meal Description & Mass/Quantity"),
-            dcc.Textarea(id='lm-desc', placeholder='e.g. "200g grilled salmon, 150g quinoa"', style={'height': '90px'}, className='neo-input'),
-            html.Label("Upload meal photo (optional)"),
-            dcc.Upload(id='lm-upload', children=html.Div(['Drag and Drop or ', html.A('Select Files')]), 
-                       style={'width': '100%', 'height': '60px', 'lineHeight': '60px', 'borderWidth': '1px', 'borderStyle': 'dashed', 'borderRadius': '10px', 'textAlign': 'center', 'marginBottom': '16px', 'borderColor': PULSAR_CYAN}),
+            html.Br(),
+            html.Label("MEAL DESCRIPTION & MASS / QUANTITY"),
+            dcc.Textarea(id='lm-desc', placeholder='e.g. "200g grilled salmon, 150g quinoa, 1 avocado"', style={'height': '90px'}, className='neo-input'),
+            html.Label("UPLOAD MEAL PHOTO (OPTIONAL)"),
+            dcc.Upload(id='lm-upload', children=html.Div(['Drag and Drop or ', html.A('Select Files', style={"color": PULSAR_CYAN})]), 
+                       style={'width': '100%', 'height': '60px', 'lineHeight': '60px', 'borderWidth': '1px', 'borderStyle': 'dashed', 'borderRadius': '10px', 'textAlign': 'center', 'marginBottom': '16px', 'borderColor': PULSAR_CYAN, 'color': '#FFFFFF'}),
             html.Div(id='lm-preview'),
             html.Button("🤖 Analyze with Space AI", id='btn-analyze', n_clicks=0, className='neo-btn')
         ]),
@@ -232,6 +260,28 @@ def display_page(pathname, session_data):
     if not profile or not profile.get("onboarding_complete"):
         return render_onboarding_page()
 
+    # --- Populating Space Station Cadet Details ---
+    unit_label = "kg" if profile.get("unit_pref") == "metric" else "lbs"
+    weight_val = profile.get("weight_kg", "--")
+    goal_val = profile.get("goal", "Maintenance")
+    cal_target = profile.get("calorie_target", 2000)
+    user_identifier = profile.get("identifier", f"Cadet #{user_id}")
+
+    cadet_info_card = html.Div(style={
+        "background": "rgba(0, 242, 254, 0.08)",
+        "borderRadius": "12px",
+        "padding": "14px",
+        "border": f"1px solid rgba(0, 242, 254, 0.3)",
+        "marginBottom": "20px"
+    }, children=[
+        html.Div("👨‍🚀 SPACE STATION CADET", style={"color": PULSAR_CYAN, "fontSize": "11px", "fontWeight": "bold", "letterSpacing": "1px"}),
+        html.Div(f"ID: {user_identifier}", style={"color": "#FFFFFF", "fontSize": "13px", "fontWeight": "600", "marginTop": "4px"}),
+        html.Hr(style={"borderColor": "rgba(0, 242, 254, 0.2)", "margin": "8px 0"}),
+        html.Div(f"🎯 Goal: {goal_val}", style={"color": "#E0E6ED", "fontSize": "12px"}),
+        html.Div(f"⚖️ Weight: {weight_val} {unit_label}", style={"color": "#E0E6ED", "fontSize": "12px", "marginTop": "3px"}),
+        html.Div(f"🔥 Target: {cal_target:.0f} kcal/day", style={"color": HYPERDRIVE_GREEN, "fontSize": "12px", "marginTop": "3px", "fontWeight": "600"}),
+    ])
+
     nav_links = [
         {"path": "/", "label": "Dashboard"},
         {"path": "/log-meal", "label": "Log Meal"},
@@ -240,10 +290,10 @@ def display_page(pathname, session_data):
     
     sidebar = html.Div(className='sidebar', children=[
         html.H2("🚀 NeoFit AI", style={"background": f"linear-gradient(90deg,{PULSAR_CYAN},{COSMIC_PURPLE})", "WebkitBackgroundClip": "text", "WebkitTextFillColor": "transparent"}),
-        html.Div("Space Station Cadet", style={"color": "#8CA0C0", "fontSize": "12px", "marginBottom": "20px"}),
+        cadet_info_card,
         html.Hr(style={"borderColor": "rgba(123, 44, 191, 0.3)", "width": "100%"}),
         *[dcc.Link(html.Button(link["label"], className=f"neo-btn neo-btn-nav {'active' if pathname == link['path'] else ''}"), href=link["path"]) for link in nav_links],
-        html.Hr(style={"borderColor": "rgba(123, 44, 191, 0.3)", "width": "100%"}),
+        html.Hr(style={"borderColor": "rgba(123, 44, 191, 0.3)", "width": "100%", "marginTop": "auto"}),
         html.Button("Log Out", id='btn-logout', className='neo-btn', style={"background": "transparent", "border": f"1px solid {NEBULA_PINK}", "color": NEBULA_PINK})
     ])
 
@@ -326,16 +376,16 @@ def handle_logout(n_clicks):
     Output('url', 'pathname', allow_duplicate=True),
     Input('btn-onboard', 'n_clicks'),
     [State('session-store', 'data'), State('ob-age', 'value'), State('ob-gender', 'value'),
-     State('ob-weight', 'value'), State('ob-height', 'value'), State('ob-activity', 'value'), State('ob-goal', 'value')],
+     State('ob-weight', 'value'), State('ob-height', 'value'), State('ob-activity', 'value'), State('ob-goal', 'value'), State('unit-pref', 'value')],
     prevent_initial_call=True
 )
-def complete_onboarding(n_clicks, session_data, age, gender, weight, height, activity, goal):
+def complete_onboarding(n_clicks, session_data, age, gender, weight, height, activity, goal, unit_pref):
     if n_clicks > 0 and session_data.get('user_id'):
         user_id = session_data['user_id']
         targets = calc.calculate_targets(weight, height, int(age), gender, activity, goal)
         db.save_profile(
             user_id, age=int(age), gender=gender, weight_kg=weight, height_cm=height,
-            activity_level=activity, goal=goal, unit_pref="metric",
+            activity_level=activity, goal=goal, unit_pref=unit_pref or "metric",
             calorie_target=targets["calories"], protein_target=targets["protein"],
             carb_target=targets["carbs"], fat_target=targets["fats"], custom_override=0, onboarding_complete=1
         )
@@ -374,12 +424,12 @@ def analyze_meal(n_clicks, desc, upload_contents, meal_type, log_date, session_d
 
         ui = neo_card(title="AI Analysis Complete", children=[
             Row([
-                Col([html.Label("Calories (kcal)"), dcc.Input(id='edit-cal', type='number', value=result["calories"], className='neo-input')]),
-                Col([html.Label("Protein (g)"), dcc.Input(id='edit-pro', type='number', value=result["protein"], className='neo-input')]),
-                Col([html.Label("Carbs (g)"), dcc.Input(id='edit-carb', type='number', value=result["carbs"], className='neo-input')]),
-                Col([html.Label("Fats (g)"), dcc.Input(id='edit-fat', type='number', value=result["fats"], className='neo-input')]),
+                Col([html.Label("CALORIES (KCAL)"), dcc.Input(id='edit-cal', type='number', value=result["calories"], className='neo-input')]),
+                Col([html.Label("PROTEIN (G)"), dcc.Input(id='edit-pro', type='number', value=result["protein"], className='neo-input')]),
+                Col([html.Label("CARBS (G)"), dcc.Input(id='edit-carb', type='number', value=result["carbs"], className='neo-input')]),
+                Col([html.Label("FATS (G)"), dcc.Input(id='edit-fat', type='number', value=result["fats"], className='neo-input')]),
             ]),
-            html.P(f"🤖 Space Coach Advice: {result.get('feedback', '')}", style={"color": HYPERDRIVE_GREEN}),
+            html.P(f"🤖 Space Coach Advice: {result.get('feedback', '')}", style={"color": HYPERDRIVE_GREEN, "fontWeight": "bold"}),
             html.Button("✅ Confirm & Save Fuel Log", id='btn-save-meal', n_clicks=0, className='neo-btn'),
             html.Div(id='save-meal-status', style={"marginTop": "10px"})
         ])
