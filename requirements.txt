@@ -1,0 +1,10 @@
+# Core app
+streamlit>=1.36.0
+pandas>=2.0.0
+plotly>=5.20.0
+Pillow>=10.0.0
+
+# Optional - only needed if you want LIVE AI meal analysis instead of the
+# built-in local mock estimator (the app runs perfectly fine without these).
+openai>=1.30.0                 # for OPENAI_API_KEY / GPT-4o vision
+google-generativeai>=0.5.0     # for GOOGLE_API_KEY / Gemini 1.5 Flash
