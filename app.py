@@ -31,7 +31,6 @@ from styles import (
 app = dash.Dash(__name__, suppress_callback_exceptions=True, title="NeoFit AI — Space Gym")
 server = app.server
 
-# Inject global CSS directly into Dash HTML Index Shell (Fixes html.Style error)
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -217,7 +216,7 @@ def render_log_meal():
     ])
 
 # --------------------------------------------------------------------------- #
-# Core Routing & Callbacks
+# Core Routing Callback
 # --------------------------------------------------------------------------- #
 @app.callback(
     Output('page-container', 'children'),
@@ -261,47 +260,68 @@ def display_page(pathname, session_data):
 # --------------------------------------------------------------------------- #
 # Action Callbacks
 # --------------------------------------------------------------------------- #
+
+# 1. Login Callback
 @app.callback(
-    [Output('session-store', 'data', allow_duplicate=True), Output('auth-error', 'children')],
-    [Input('btn-login', 'n_clicks'), Input('btn-signup', 'n_clicks'), Input('btn-logout', 'n_clicks')],
-    [State('login-id', 'value'), State('login-pw', 'value'),
-     State('signup-id', 'value'), State('signup-pw', 'value'), State('signup-pw2', 'value'),
-     State('session-store', 'data')],
+    [Output('session-store', 'data', allow_duplicate=True), Output('auth-error', 'children', allow_duplicate=True)],
+    Input('btn-login', 'n_clicks'),
+    [State('login-id', 'value'), State('login-pw', 'value')],
     prevent_initial_call=True
 )
-def handle_auth(login_clicks, signup_clicks, logout_clicks, lid, lpw, sid, spw, spw2, session_data):
-    ctx = callback_context
-    if not ctx.triggered:
-        return dash.no_update, ""
+def handle_login(n_clicks, lid, lpw):
+    if not n_clicks:
+        return dash.no_update, dash.no_update
+    if not lid or not lpw:
+        return dash.no_update, "Please enter both Email/Phone and Password."
     
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    if trigger_id == 'btn-logout':
-        return {}, ""
-
-    if trigger_id == 'btn-login' and lid and lpw:
-        norm_id = normalize_identifier(lid)
-        user = db.authenticate(norm_id, lpw)
-        if user:
-            return {'user_id': user['id']}, ""
-        return dash.no_update, "Invalid credentials."
-
-    if trigger_id == 'btn-signup' and sid and spw:
-        if spw != spw2:
-            return dash.no_update, "Passwords do not match."
-        norm_id = normalize_identifier(sid)
-        auth_type = detect_identifier_type(norm_id)
-        if not auth_type or not is_valid_password(spw):
-             return dash.no_update, "Invalid ID format or weak password."
-        
-        user_id = db.create_user(norm_id, auth_type, spw)
-        if user_id:
-            return {'user_id': user_id}, ""
-        return dash.no_update, "Account already exists."
-
-    return dash.no_update, "Please fill all fields."
+    norm_id = normalize_identifier(lid)
+    user = db.authenticate(norm_id, lpw)
+    if user:
+        return {'user_id': user['id']}, ""
+    return dash.no_update, "Invalid credentials. Check your details or create an account."
 
 
+# 2. Signup Callback
+@app.callback(
+    [Output('session-store', 'data', allow_duplicate=True), Output('auth-error', 'children', allow_duplicate=True)],
+    Input('btn-signup', 'n_clicks'),
+    [State('signup-id', 'value'), State('signup-pw', 'value'), State('signup-pw2', 'value')],
+    prevent_initial_call=True
+)
+def handle_signup(n_clicks, sid, spw, spw2):
+    if not n_clicks:
+        return dash.no_update, dash.no_update
+    if not sid or not spw or not spw2:
+        return dash.no_update, "Please fill in all signup fields."
+    if spw != spw2:
+        return dash.no_update, "Passwords do not match."
+    
+    norm_id = normalize_identifier(sid)
+    auth_type = detect_identifier_type(norm_id)
+    if not auth_type:
+        return dash.no_update, "Please enter a valid email or phone number."
+    if not is_valid_password(spw):
+        return dash.no_update, "Password is too weak (must be at least 6 characters)."
+    
+    user_id = db.create_user(norm_id, auth_type, spw)
+    if user_id:
+        return {'user_id': user_id}, ""
+    return dash.no_update, "An account with this email/phone already exists."
+
+
+# 3. Logout Callback
+@app.callback(
+    Output('session-store', 'data', allow_duplicate=True),
+    Input('btn-logout', 'n_clicks'),
+    prevent_initial_call=True
+)
+def handle_logout(n_clicks):
+    if n_clicks:
+        return {}
+    return dash.no_update
+
+
+# 4. Onboarding Callback
 @app.callback(
     Output('url', 'pathname', allow_duplicate=True),
     Input('btn-onboard', 'n_clicks'),
@@ -323,6 +343,7 @@ def complete_onboarding(n_clicks, session_data, age, gender, weight, height, act
     return dash.no_update
 
 
+# 5. Meal AI Analysis
 @app.callback(
     [Output('lm-ai-result-container', 'children'), Output('ai-result-store', 'data')],
     Input('btn-analyze', 'n_clicks'),
@@ -366,6 +387,7 @@ def analyze_meal(n_clicks, desc, upload_contents, meal_type, log_date, session_d
     return dash.no_update, dash.no_update
 
 
+# 6. Save Meal Log
 @app.callback(
     Output('url', 'pathname', allow_duplicate=True),
     Input('btn-save-meal', 'n_clicks'),
@@ -390,5 +412,6 @@ def save_meal(n_clicks, cal, pro, carb, fat, ai_data, session_data):
         return "/"
     return dash.no_update
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8050, debug=True)
